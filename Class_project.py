@@ -17,7 +17,9 @@ import seaborn as sn
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 
+fig_path = '/root/CSCE623_Project/figures'
 
 # def confusion_matrix(y_data, predicted_data):
 #     confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
@@ -118,7 +120,7 @@ print(SortedDict(Counter(twenty_test.target).items()))
 #         word_index = vocab_mapping.vocabulary_.get(u list_of_words)
 #     return word_index
 
-def word_count_plot (vect_counts):
+def word_count_plot (vect_counts, fig_name):
     vect_counts
     """
     This function creates a plot showing words against number of occurences. It's input is a sparse matrix. It counts the
@@ -132,6 +134,7 @@ def word_count_plot (vect_counts):
     plt.xlabel("Features")
     plt.ylabel("Number of appearances")
     plt.title("Features vs number of appearances")
+    plt.savefig(f'{fig_path}/{fig_name}.png')
     return None
 
 def get_term(dict, search_index):
@@ -180,7 +183,8 @@ if bag_of_words:
     vis = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=text_bow.classes_)
     vis.plot()
     plt.title("Bag_of_words and Multinomial Naive Bayes")
-    plt.show()
+    plt.savefig(f'{fig_path}/xBOFMNB.png')
+    #plt.show()
     
     # Investigate count vectorizer more, maybe create histograms. This would be a good place to explore class differences
 
@@ -196,8 +200,18 @@ if tfidf_bool:
     # X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
     # print(tfidf_transformer.vocabulary_)
 
-    tf_idf_vectorizer = TfidfVectorizer(max_features = 20, max_df = 2000, min_df = 50)
+    tf_idf_vectorizer = TfidfVectorizer(max_features = 100, max_df = 1000, min_df = 50)
     tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
+
+    feature_names = tf_idf_vectorizer.get_feature_names_out()
+    dense = tf_idf_counts.todense()
+    lst1 = dense.tolist()
+    df = pd.DataFrame(lst1, columns=feature_names)
+    print(df.head)
+    x = tf_idf_vectorizer.vocabulary_
+    Cloud = WordCloud(background_color="white").generate_from_frequencies(df.T.sum(axis=1))
+    Cloud.to_file(f'{fig_path}/tf_idf_cloud.png')
+    
     #print(tf_idf_counts)
     #print(tf_idf_counts.idf_)
     # print(X_train_tfidf.shape)
