@@ -213,7 +213,7 @@ if bag_of_words:
     # Term frequency divides each word in a document by the total words in that document
     # Inverse document frequency decreases the weights of words based on how often they appear in many documents
 
-run_experiment_bool = True
+run_experiment_bool = False
 tfidf_bool = True
 naive_bayes_bool = False
 svm_bool = True
@@ -274,8 +274,8 @@ if tfidf_bool:
         print (metrics.classification_report(y_validation, predicted))
 
     if svm_bool:
-        text_clf = Pipeline([('vect', CountVectorizer(ngram_range = (1,3), min_df = 10)), ('tfidf', TfidfTransformer()), ('clf', SGDClassifier(loss = 'hinge', penalty = 'l2',
-                                                                                                            alpha=1e-3, random_state = 42,
+        text_clf = Pipeline([('vect', CountVectorizer(ngram_range = (1,2))), ('tfidf', TfidfTransformer()), ('clf', SGDClassifier(loss = 'hinge', penalty = 'l2',
+                                                                                                            alpha=1e-4, random_state = 42,
                                                                                                             max_iter = 5, tol=None)),])
         
         text_clf.fit(X_train, y_train)
@@ -288,6 +288,7 @@ if tfidf_bool:
             gs_clf = gs_clf.fit(twenty_train.data, twenty_train.target)
             print(gs_clf.best_score_)
             print(gs_clf.best_params_)
+            #Best parameters{'clf__alpha': 0.0001, 'vect__ngram_range': (1, 2)}
 
 
         predicted = text_clf.predict(X_validation)
@@ -298,6 +299,34 @@ if tfidf_bool:
         # Plot Confusion Matrix
         confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
         plot_confusion_matrix(confusion_matrix, categories, title = "TF-IDF SVM Confusion Matrix")
+
+# Prediction accuracy on validation set is:  0.9248784798939461
+#               precision    recall  f1-score   support
+
+#            0       0.96      0.95      0.95        97
+#            1       0.82      0.84      0.83       104
+#            2       0.84      0.89      0.86       115
+#            3       0.79      0.81      0.80       123
+#            4       0.96      0.85      0.90       126
+#            5       0.92      0.92      0.92       106
+#            6       0.82      0.89      0.85       109
+#            7       0.95      0.95      0.95       139
+#            8       0.96      0.95      0.95       122
+#            9       0.97      0.98      0.98       102
+#           10       0.96      0.98      0.97       108
+#           11       0.99      0.97      0.98       125
+#           12       0.89      0.86      0.88       114
+#           13       0.97      0.97      0.97       119
+#           14       1.00      0.98      0.99       127
+#           15       0.91      0.94      0.93       122
+#           16       0.97      0.96      0.96       121
+#           17       0.97      1.00      0.99       102
+#           18       0.96      0.98      0.97       107
+#           19       0.88      0.79      0.83        75
+
+#     accuracy                           0.92      2263
+#    macro avg       0.92      0.92      0.92      2263
+# weighted avg       0.93      0.92      0.92      2263
 
         #Maybe consider word2vec
         # We can look at word2vec as future work. Or we can possibly take a model out of the box and start messing with it.
