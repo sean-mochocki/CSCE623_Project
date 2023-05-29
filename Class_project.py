@@ -67,6 +67,7 @@ def plot_confusion_matrix(cm, classes,
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.savefig(f'{fig_path}/{title}.png')
+    plt.close()
 
 # def confusion_matrix(y_data, predicted_data):
 #     confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
@@ -78,7 +79,7 @@ def plot_confusion_matrix(cm, classes,
 # Note - should remove headers footers and quotes, as machine learning algorithms tend to focus on these
 #https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html
 
-remove_extra_data_bool = False
+remove_extra_data_bool = True
 
 twenty_train = None
 twenty_test = None
@@ -220,11 +221,11 @@ if bag_of_words:
     # Inverse document frequency decreases the weights of words based on how often they appear in many documents
 
 run_experiment_bool = False
-tfidf_bool = True
+tfidf_bool = False
 naive_bayes_bool = False
 svm_bool = False
-random_forest_bool = True
-
+random_forest_bool = False
+run_final_experiment = True
 
 if tfidf_bool:
     # count_vect = CountVectorizer()
@@ -270,9 +271,9 @@ if tfidf_bool:
         # Create a pipeline that performs the three relevant functions
         text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', MultinomialNB()),])
 
-        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
-        print(scores)
-        print(scores.mean())
+        # scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        # print(scores)
+        # print(scores.mean())
 
         text_clf.fit(X_train, y_train)
         predicted = text_clf.predict(X_validation)
@@ -281,13 +282,13 @@ if tfidf_bool:
         print (metrics.classification_report(y_validation, predicted))
 
         graph_title = None
-        if remove_extra_data_bool: graph_title = "TF-IDF Naive Bayes Confusion Matrix Extra Data Removed"
+        if remove_extra_data_bool: graph_title = "Stripped TF-IDF Naive Bayes Confusion Matrix"
         else: graph_title = "TF-IDF Naive Bayes Confusion Matrix"
 
         # Plot Confusion Matrix
         confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
         plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
-
+        confusion_matrix = None
         # # The predicted value on the tf-idf validation set is 0.844
         # #print(np.mean(predicted == y_validation))
         
@@ -301,16 +302,16 @@ if tfidf_bool:
         text_clf = Pipeline([('vect', CountVectorizer(ngram_range = (1,2))), ('tfidf', TfidfTransformer()), ('clf', SGDClassifier(loss = 'hinge', penalty = 'l2',
                                                                                                             alpha=1e-4, random_state = 42,
                                                                                                             max_iter = 5, tol=None)),])
-        # tf_idf_vectorizer = TfidfVectorizer()
-        # tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
+        tf_idf_vectorizer = TfidfVectorizer()
+        tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
 
-        # Consider cross validation score with entire training dataset
+        #Consider cross validation score with entire training dataset
         scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
         print(scores)
         print(scores.mean())
-        # Score is: 
-        # [0.9288555  0.93018118 0.92620415 0.92664605 0.92882405]
-        # 92.814 mean
+        #Score is: 
+        #[0.9288555  0.93018118 0.92620415 0.92664605 0.92882405]
+        #92.814 mean
 
         text_clf.fit(X_train, y_train)
 
@@ -325,18 +326,18 @@ if tfidf_bool:
             #Best parameters{'clf__alpha': 0.0001, 'vect__ngram_range': (1, 2)}
 
 
-        predicted = text_clf.predict(X_validation)
-        # # The predicted value of the tf-idf validation set is 0.891
-        print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
-        print (metrics.classification_report(y_validation, predicted))
+        # predicted = text_clf.predict(X_validation)
+        # # # The predicted value of the tf-idf validation set is 0.891
+        # print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+        # print (metrics.classification_report(y_validation, predicted))
 
-        graph_title = None
-        if remove_extra_data_bool: graph_title = "TF-IDF SVM Confusion Matrix Extra Data Removed"
-        else: graph_title = "TF-IDF SVM Confusion Matrix"
+        # graph_title = None
+        # if remove_extra_data_bool: graph_title = "Stripped TF-IDF SVM Confusion Matrix"
+        # else: graph_title = "TF-IDF SVM Confusion Matrix"
 
-        # # Plot Confusion Matrix
-        confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
-        plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+        # # # Plot Confusion Matrix
+        # confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
+        # plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
 
 # Prediction accuracy on validation set is:  0.9248784798939461
 #               precision    recall  f1-score   support
@@ -397,7 +398,7 @@ if random_forest_bool:
 
 
     graph_title = None
-    if remove_extra_data_bool: graph_title = "TF-IDF Random Forest Confusion Matrix Extra Data Removed"
+    if remove_extra_data_bool: graph_title = "Stripped TF-IDF Random Forest Confusion Matrix"
     else: graph_title = "TF-IDF Random Forest Confusion Matrix"
 
     # # Plot Confusion Matrix
@@ -422,3 +423,22 @@ if random_forest_bool:
     # print_results(cv)
 
     #BEST PARAMS: {'max_depth': 20, 'n_estimators': 100} 0.772
+
+if run_final_experiment:
+    text_clf = Pipeline([('vect', CountVectorizer(ngram_range = (1,2))), ('tfidf', TfidfTransformer()), ('clf', SGDClassifier(loss = 'hinge', penalty = 'l2',
+                                                                                                            alpha=1e-4, random_state = 42,
+                                                                                                            max_iter = 5, tol=None)),])
+    text_clf.fit(twenty_train.data, twenty_train.target)
+    predicted = text_clf.predict(twenty_test.data)
+
+    print("Prediction accuracy on test set is: ", np.mean(predicted == twenty_test.target))
+    print (metrics.classification_report(twenty_test.target, predicted))
+
+    graph_title = None
+    if remove_extra_data_bool: graph_title = "Stripped TF-IDF SVM Test Results CM"
+    else: graph_title = "TF-IDF SVM Test Results CM"
+
+    # Plot Confusion Matrix
+    confusion_matrix = metrics.confusion_matrix(twenty_test.target, predicted)
+    plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+    confusion_matrix = None
