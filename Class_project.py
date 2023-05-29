@@ -2,13 +2,12 @@
 
 import itertools
 from sklearn.datasets import fetch_20newsgroups
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer, TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from collections import Counter
 from sortedcontainers import SortedDict
 import numpy as np
@@ -78,11 +77,18 @@ def plot_confusion_matrix(cm, classes,
 
 # Note - should remove headers footers and quotes, as machine learning algorithms tend to focus on these
 #https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html
-# twenty_train = fetch_20newsgroups(subset='train', remove=('headers', 'footers', 'quotes'), shuffle=True)
-# twenty_test = fetch_20newsgroups(subset='test', remove=('headers', 'footers', 'quotes'), shuffle=True)
 
-twenty_train = fetch_20newsgroups(subset='train', shuffle=True)
-twenty_test = fetch_20newsgroups(subset='test', shuffle=True)
+remove_extra_data_bool = False
+
+twenty_train = None
+twenty_test = None
+
+if remove_extra_data_bool:
+    twenty_train = fetch_20newsgroups(subset='train', remove=('headers', 'footers', 'quotes'), shuffle=True)
+    twenty_test = fetch_20newsgroups(subset='test', remove=('headers', 'footers', 'quotes'), shuffle=True)
+else:
+    twenty_train = fetch_20newsgroups(subset='train', shuffle=True)
+    twenty_test = fetch_20newsgroups(subset='test', shuffle=True)
 
 # categories will be used for confusion matrix
 categories = twenty_train.target_names
@@ -216,8 +222,8 @@ if bag_of_words:
 run_experiment_bool = False
 tfidf_bool = True
 naive_bayes_bool = False
-svm_bool = True
-random_forest_bool = False
+svm_bool = False
+random_forest_bool = True
 
 
 if tfidf_bool:
@@ -260,24 +266,52 @@ if tfidf_bool:
     # plt.show()
 
     if naive_bayes_bool:
-
+        print("Naive Bayes Classifier:")
         # Create a pipeline that performs the three relevant functions
         text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', MultinomialNB()),])
+
+        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        print(scores)
+        print(scores.mean())
+
         text_clf.fit(X_train, y_train)
         predicted = text_clf.predict(X_validation)
-        # The predicted value on the tf-idf validation set is 0.844
-        #print(np.mean(predicted == y_validation))
-        
-        conf_matrix = confusion_matrix(y_validation, predicted)
-        plot_confusion_matrix(conf_matrix, categories, title = 'TF-IDF Naive Bayes Confusion Matrix')
 
+        print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
         print (metrics.classification_report(y_validation, predicted))
 
+        graph_title = None
+        if remove_extra_data_bool: graph_title = "TF-IDF Naive Bayes Confusion Matrix Extra Data Removed"
+        else: graph_title = "TF-IDF Naive Bayes Confusion Matrix"
+
+        # Plot Confusion Matrix
+        confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
+        plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+
+        # # The predicted value on the tf-idf validation set is 0.844
+        # #print(np.mean(predicted == y_validation))
+        
+        # conf_matrix = confusion_matrix(y_validation, predicted)
+        # plot_confusion_matrix(conf_matrix, categories, title = 'TF-IDF Naive Bayes Confusion Matrix')
+
+        # print (metrics.classification_report(y_validation, predicted))
+
     if svm_bool:
+        print("SVM Classifier: ")
         text_clf = Pipeline([('vect', CountVectorizer(ngram_range = (1,2))), ('tfidf', TfidfTransformer()), ('clf', SGDClassifier(loss = 'hinge', penalty = 'l2',
                                                                                                             alpha=1e-4, random_state = 42,
                                                                                                             max_iter = 5, tol=None)),])
-        
+        # tf_idf_vectorizer = TfidfVectorizer()
+        # tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
+
+        # Consider cross validation score with entire training dataset
+        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        print(scores)
+        print(scores.mean())
+        # Score is: 
+        # [0.9288555  0.93018118 0.92620415 0.92664605 0.92882405]
+        # 92.814 mean
+
         text_clf.fit(X_train, y_train)
 
         if run_experiment_bool:
@@ -292,13 +326,17 @@ if tfidf_bool:
 
 
         predicted = text_clf.predict(X_validation)
-        # The predicted value of the tf-idf validation set is 0.891
+        # # The predicted value of the tf-idf validation set is 0.891
         print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
         print (metrics.classification_report(y_validation, predicted))
 
-        # Plot Confusion Matrix
+        graph_title = None
+        if remove_extra_data_bool: graph_title = "TF-IDF SVM Confusion Matrix Extra Data Removed"
+        else: graph_title = "TF-IDF SVM Confusion Matrix"
+
+        # # Plot Confusion Matrix
         confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
-        plot_confusion_matrix(confusion_matrix, categories, title = "TF-IDF SVM Confusion Matrix")
+        plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
 
 # Prediction accuracy on validation set is:  0.9248784798939461
 #               precision    recall  f1-score   support
@@ -330,3 +368,57 @@ if tfidf_bool:
 
         #Maybe consider word2vec
         # We can look at word2vec as future work. Or we can possibly take a model out of the box and start messing with it.
+if random_forest_bool:
+    #https://www.kaggle.com/code/onadegibert/sentiment-analysis-with-tfidf-and-random-forest
+    print("Random Forest Classifier: ")
+
+    # tfidf_vect = TfidfVectorizer()
+    # tfidf_vect_fit = tfidf_vect.fit(twenty_train.data)
+    # X_train = vectorize(twenty_train.data.tfidf_vect_fit)
+
+    tf_idf_vectorizer = TfidfVectorizer()
+    tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
+
+    rf = RandomForestClassifier()
+    # scores = cross_val_score(rf, tf_idf_counts, twenty_train.target, cv=5)
+    # print(scores)
+    # print(scores.mean())
+    #[0.83296509 0.81926646 0.84489616 0.837384   0.83510168]
+    # Average cross Val score: 0.8339226780097153
+
+    text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', RandomForestClassifier()),])
+
+    text_clf.fit(X_train, y_train)
+    predicted = text_clf.predict(X_validation)
+
+    print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+    print (metrics.classification_report(y_validation, predicted))
+
+
+
+    graph_title = None
+    if remove_extra_data_bool: graph_title = "TF-IDF Random Forest Confusion Matrix Extra Data Removed"
+    else: graph_title = "TF-IDF Random Forest Confusion Matrix"
+
+    # # Plot Confusion Matrix
+    confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
+    plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+
+    def print_results(results):
+        print('BEST PARAMS: {}\n'.format(results.best_params_))
+
+        means = results.cv_results_['mean_test_score']
+        stds = results.cv_results_['std_test_score']
+        for mean, std, params in zip(means, stds, results.cv_results_['params']):
+            print('{} (+/-{}) for {}'.format(round(mean, 3), round(std * 2, 3), params))
+    
+    # parameters = {
+    #     'n_estimators': [100],
+    #     'max_depth': [60, 80, 100] 
+    # }
+
+    # cv = GridSearchCV(rf,parameters)
+    # cv.fit(tf_idf_counts, twenty_train.target)
+    # print_results(cv)
+
+    #BEST PARAMS: {'max_depth': 20, 'n_estimators': 100} 0.772
