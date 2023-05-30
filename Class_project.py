@@ -206,12 +206,18 @@ if bag_of_words:
     predicted = text_bow.predict(X_validation)
     print(np.mean(predicted == y_validation))
     
+    graph_title = None
+    if remove_extra_data_bool: graph_title = "Stripped Bag of Words Naive Bayes"
+    else: graph_title = "Bag of Words Naive Bayes"
+
     #print (metrics.classification_report(y_validation, predicted))
-    conf_matrix = confusion_matrix(y_validation, predicted)
-    vis = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=text_bow.classes_)
-    vis.plot()
-    plt.title("Bag_of_words and Multinomial Naive Bayes")
-    plt.savefig(f'{fig_path}/xBOFMNB.png')
+    cm = confusion_matrix(y_validation, predicted)
+    plot_confusion_matrix(cm, categories, title = graph_title)
+    
+    # vis = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=text_bow.classes_)
+    # vis.plot()
+    # plt.title("Bag_of_words and Multinomial Naive Bayes")
+    # plt.savefig(f'{fig_path}/xBOFMNB.png')
     #plt.show()
     
     # Investigate count vectorizer more, maybe create histograms. This would be a good place to explore class differences
@@ -221,11 +227,11 @@ if bag_of_words:
     # Inverse document frequency decreases the weights of words based on how often they appear in many documents
 
 run_experiment_bool = False
-tfidf_bool = False
-naive_bayes_bool = False
-svm_bool = False
-random_forest_bool = False
-run_final_experiment = True
+tfidf_bool = True
+naive_bayes_bool = True
+svm_bool = True
+random_forest_bool = True
+run_final_experiment = False
 
 if tfidf_bool:
     # count_vect = CountVectorizer()
@@ -234,7 +240,7 @@ if tfidf_bool:
     # X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
     # print(tfidf_transformer.vocabulary_)
 
-    tf_idf_vectorizer = TfidfVectorizer(max_features = 100, max_df = 1000, min_df = 50)
+    tf_idf_vectorizer = TfidfVectorizer(ngram_range = (1,2), max_features = 100, max_df = 500, min_df = 100)
     tf_idf_counts = tf_idf_vectorizer.fit_transform(X_train)
 
     feature_names = tf_idf_vectorizer.get_feature_names_out()
@@ -246,6 +252,18 @@ if tfidf_bool:
     Cloud = WordCloud(background_color="white").generate_from_frequencies(df.T.sum(axis=1))
     Cloud.to_file(f'{fig_path}/tf_idf_cloud.png')
     
+    # tf_idf_vectorizer = TfidfVectorizer()
+    # tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
+    
+    # feature_names = tf_idf_vectorizer.get_feature_names_out()
+    # dense = tf_idf_counts.todense()
+    # lst1 = dense.tolist()
+    # df = pd.DataFrame(lst1, columns=feature_names)
+    # #print(df.head)
+    # x = tf_idf_vectorizer.vocabulary_
+    # Cloud = WordCloud(background_color="white").generate_from_frequencies(df.T.sum(axis=1))
+    # Cloud.to_file(f'{fig_path}/tf_idf_cloud_all_words.png')
+
     #print(tf_idf_counts)
     #print(tf_idf_counts.idf_)
     # print(X_train_tfidf.shape)
@@ -271,9 +289,9 @@ if tfidf_bool:
         # Create a pipeline that performs the three relevant functions
         text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', MultinomialNB()),])
 
-        # scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
-        # print(scores)
-        # print(scores.mean())
+        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        print(scores)
+        print(scores.mean())
 
         text_clf.fit(X_train, y_train)
         predicted = text_clf.predict(X_validation)
@@ -326,10 +344,10 @@ if tfidf_bool:
             #Best parameters{'clf__alpha': 0.0001, 'vect__ngram_range': (1, 2)}
 
 
-        # predicted = text_clf.predict(X_validation)
+        predicted = text_clf.predict(X_validation)
         # # # The predicted value of the tf-idf validation set is 0.891
-        # print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
-        # print (metrics.classification_report(y_validation, predicted))
+        print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+        print (metrics.classification_report(y_validation, predicted))
 
         # graph_title = None
         # if remove_extra_data_bool: graph_title = "Stripped TF-IDF SVM Confusion Matrix"
@@ -381,9 +399,9 @@ if random_forest_bool:
     tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
 
     rf = RandomForestClassifier()
-    # scores = cross_val_score(rf, tf_idf_counts, twenty_train.target, cv=5)
-    # print(scores)
-    # print(scores.mean())
+    scores = cross_val_score(rf, tf_idf_counts, twenty_train.target, cv=5)
+    print(scores)
+    print(scores.mean())
     #[0.83296509 0.81926646 0.84489616 0.837384   0.83510168]
     # Average cross Val score: 0.8339226780097153
 
