@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 import sklearn.metrics
+from sklearn.metrics import make_scorer, balanced_accuracy_score
+from sklearn.svm import SVC
 from collections import Counter
 from sortedcontainers import SortedDict
 import numpy as np
@@ -79,7 +81,7 @@ def plot_confusion_matrix(cm, classes,
 # Note - should remove headers footers and quotes, as machine learning algorithms tend to focus on these
 #https://scikit-learn.org/0.19/datasets/twenty_newsgroups.html
 
-remove_extra_data_bool = True
+remove_extra_data_bool = False
 
 twenty_train = None
 twenty_test = None
@@ -174,50 +176,37 @@ def word_count_plot (vect_counts, fig_name):
 def get_term(dict, search_index):
     return list(dict.keys())[list(dict.values()).index(search_index)]
 # If performing bag_of_words tests, state that here
+
+
+# Create a custom scoring function
+balanced_accuracy_scorer = make_scorer(balanced_accuracy_score)
+
 bag_of_words = False
 
 if bag_of_words:
     # Perform bag of words approach. This creates a sparse matrix where each word is assigned a number
     count_vect = CountVectorizer(strip_accents='unicode', min_df = 50, max_df = 400, max_features = 10000, ngram_range=(1, 3))
     X_train_counts = count_vect.fit_transform(twenty_train.data)
-    #print(count_vect.vocabulary_)
-    #print(X_train_counts.shape)
 
-    #word_count_plot(X_train_counts)
-
-    # X_train_counts_wordcount = X_train_counts.sum(axis=0)
-    # print("Word count is: ", X_train_counts_wordcount[0])
-
-    # print("trying to make plot")
-    # plt.plot(X_train_counts_wordcount.T)
-    #plt.show()
-    # # print(count_vect.vocabulary_.get(u'the'))
-    # # print(count_vect.vocabulary_.get(u'alpha'))
-
-    # print("the second word appears: ", X_train_counts.shape[1], " times")
-    # CountVectorizer just turns articles into features with frequencies of words
-
-
-
-    #bow_nb = MultinomialNB().fit(X_train_counts, y_train)
 
     text_bow = Pipeline([('vect', CountVectorizer()), ('clf', MultinomialNB()),])
 
-    scores = cross_val_score(text_bow, twenty_train.data, twenty_train.target, cv=5)
+    scores = cross_val_score(text_bow, twenty_train.data, twenty_train.target, cv=5, scoring = balanced_accuracy_scorer)
     print(scores)
-    print("Cross Val score is ", scores.mean())
+    print("Balanced Accuracy Cross Val score is ", scores.mean())
 
     text_bow.fit(X_train, y_train)
     predicted = text_bow.predict(X_validation)
-    print(np.mean(predicted == y_validation))
-    
+    #print(np.mean(predicted == y_validation))
+    print(sklearn.metrics.balanced_accuracy_score(y_validation, predicted))
+
     graph_title = None
-    if remove_extra_data_bool: graph_title = "Stripped Bag of Words Naive Bayes"
-    else: graph_title = "Bag of Words Naive Bayes"
+    if remove_extra_data_bool: graph_title = "Normalized Stripped Bag of Words Naive Bayes"
+    else: graph_title = "Normalized Bag of Words Naive Bayes CM"
 
     #print (metrics.classification_report(y_validation, predicted))
-    cm = confusion_matrix(y_validation, predicted)
-    plot_confusion_matrix(cm, categories, title = graph_title)
+    cm = metrics.confusion_matrix(y_validation, predicted)
+    plot_confusion_matrix(cm, categories, title = graph_title, normalize = True)
     
     # vis = ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=text_bow.classes_)
     # vis.plot()
@@ -232,11 +221,11 @@ if bag_of_words:
     # Inverse document frequency decreases the weights of words based on how often they appear in many documents
 
 run_experiment_bool = False
-tfidf_bool = False
+tfidf_bool = True
 naive_bayes_bool = True
-svm_bool = False
-random_forest_bool = False
-run_final_experiment = True
+svm_bool = True
+random_forest_bool = True
+run_final_experiment = False
 
 if tfidf_bool:
     # count_vect = CountVectorizer()
@@ -294,24 +283,27 @@ if tfidf_bool:
         # Create a pipeline that performs the three relevant functions
         text_clf = Pipeline([('vect', CountVectorizer()), ('tfidf', TfidfTransformer()), ('clf', MultinomialNB()),])
 
-        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5, scoring = balanced_accuracy_scorer)
         print(scores)
         print(scores.mean())
 
         text_clf.fit(X_train, y_train)
         predicted = text_clf.predict(X_validation)
 
-        print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
-        print (metrics.classification_report(y_validation, predicted))
+        # print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+        # print (metrics.classification_report(y_validation, predicted))
 
-        graph_title = None
-        if remove_extra_data_bool: graph_title = "Stripped TF-IDF Naive Bayes Confusion Matrix"
-        else: graph_title = "TF-IDF Naive Bayes Confusion Matrix"
+        print("Balanced Accuracy score is: ")
+        print(sklearn.metrics.balanced_accuracy_score(y_validation, predicted))
 
-        # Plot Confusion Matrix
-        confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
-        plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
-        confusion_matrix = None
+        # graph_title = None
+        # if remove_extra_data_bool: graph_title = "Normalized Stripped TF-IDF Naive Bayes CM"
+        # else: graph_title = "Normalized TF-IDF Naive Bayes CM"
+
+        # # Plot Confusion Matrix
+        # confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
+        # plot_confusion_matrix(confusion_matrix, categories, title = graph_title, normalize = True)
+        
         # # The predicted value on the tf-idf validation set is 0.844
         # #print(np.mean(predicted == y_validation))
         
@@ -329,7 +321,7 @@ if tfidf_bool:
         tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
 
         #Consider cross validation score with entire training dataset
-        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5)
+        scores = cross_val_score(text_clf, twenty_train.data, twenty_train.target, cv=5, scoring = balanced_accuracy_scorer)
         print(scores)
         print(scores.mean())
         #Score is: 
@@ -351,9 +343,10 @@ if tfidf_bool:
 
         predicted = text_clf.predict(X_validation)
         # # # The predicted value of the tf-idf validation set is 0.891
-        print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
-        print (metrics.classification_report(y_validation, predicted))
-
+        # print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+        #print (metrics.classification_report(y_validation, predicted))
+        print("Balanced Accuracy score is: ")
+        print(sklearn.metrics.balanced_accuracy_score(y_validation, predicted))
         # graph_title = None
         # if remove_extra_data_bool: graph_title = "Stripped TF-IDF SVM Confusion Matrix"
         # else: graph_title = "TF-IDF SVM Confusion Matrix"
@@ -404,7 +397,7 @@ if random_forest_bool:
     tf_idf_counts = tf_idf_vectorizer.fit_transform(twenty_train.data)
 
     rf = RandomForestClassifier()
-    scores = cross_val_score(rf, tf_idf_counts, twenty_train.target, cv=5)
+    scores = cross_val_score(rf, tf_idf_counts, twenty_train.target, cv=5, scoring = balanced_accuracy_scorer)
     print(scores)
     print(scores.mean())
     #[0.83296509 0.81926646 0.84489616 0.837384   0.83510168]
@@ -415,18 +408,20 @@ if random_forest_bool:
     text_clf.fit(X_train, y_train)
     predicted = text_clf.predict(X_validation)
 
-    print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
-    print (metrics.classification_report(y_validation, predicted))
+    #print("Prediction accuracy on validation set is: ", np.mean(predicted == y_validation))
+    print("Balanced Accuracy score is: ")
+    print(sklearn.metrics.balanced_accuracy_score(y_validation, predicted))
+    #print (metrics.classification_report(y_validation, predicted))
 
 
 
-    graph_title = None
-    if remove_extra_data_bool: graph_title = "Stripped TF-IDF Random Forest Confusion Matrix"
-    else: graph_title = "TF-IDF Random Forest Confusion Matrix"
+    # graph_title = None
+    # if remove_extra_data_bool: graph_title = "Stripped TF-IDF Random Forest Confusion Matrix"
+    # else: graph_title = "TF-IDF Random Forest Confusion Matrix"
 
-    # # Plot Confusion Matrix
-    confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
-    plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+    # # # Plot Confusion Matrix
+    # confusion_matrix = metrics.confusion_matrix(y_validation, predicted)
+    # plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
 
     def print_results(results):
         print('BEST PARAMS: {}\n'.format(results.best_params_))
