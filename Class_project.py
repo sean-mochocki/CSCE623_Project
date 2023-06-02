@@ -7,7 +7,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import sklearn.metrics
 from collections import Counter
 from sortedcontainers import SortedDict
 import numpy as np
@@ -59,7 +59,7 @@ def plot_confusion_matrix(cm, classes,
     fmt = '.2f' if normalize else 'd'
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt), fontsize='x-small',
+        plt.text(j, i, format(cm[i, j], fmt), fontsize='xx-small',
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
@@ -202,6 +202,11 @@ if bag_of_words:
     #bow_nb = MultinomialNB().fit(X_train_counts, y_train)
 
     text_bow = Pipeline([('vect', CountVectorizer()), ('clf', MultinomialNB()),])
+
+    scores = cross_val_score(text_bow, twenty_train.data, twenty_train.target, cv=5)
+    print(scores)
+    print("Cross Val score is ", scores.mean())
+
     text_bow.fit(X_train, y_train)
     predicted = text_bow.predict(X_validation)
     print(np.mean(predicted == y_validation))
@@ -227,11 +232,11 @@ if bag_of_words:
     # Inverse document frequency decreases the weights of words based on how often they appear in many documents
 
 run_experiment_bool = False
-tfidf_bool = True
+tfidf_bool = False
 naive_bayes_bool = True
-svm_bool = True
-random_forest_bool = True
-run_final_experiment = False
+svm_bool = False
+random_forest_bool = False
+run_final_experiment = True
 
 if tfidf_bool:
     # count_vect = CountVectorizer()
@@ -453,10 +458,11 @@ if run_final_experiment:
     print (metrics.classification_report(twenty_test.target, predicted))
 
     graph_title = None
-    if remove_extra_data_bool: graph_title = "Stripped TF-IDF SVM Test Results CM"
-    else: graph_title = "TF-IDF SVM Test Results CM"
+    if remove_extra_data_bool: graph_title = "Normalized Stripped TF-IDF SVM Test Results"
+    else: graph_title = "Normalized TF-IDF SVM Test Results"
 
     # Plot Confusion Matrix
     confusion_matrix = metrics.confusion_matrix(twenty_test.target, predicted)
-    plot_confusion_matrix(confusion_matrix, categories, title = graph_title)
+    plot_confusion_matrix(confusion_matrix, categories, title = graph_title, normalize=True)
+    print(sklearn.metrics.balanced_accuracy_score(twenty_test.target, predicted))
     confusion_matrix = None
